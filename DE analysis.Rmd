@@ -1,0 +1,163 @@
+---
+title: "DE analysis"
+output:
+  html_document:
+    df_print: paged
+---
+#1. DEdata Input
+```{r}
+load(file = '~/Mithrandir.training/R.data/OutputData/Inputdata.rdata')
+
+#Input DE data
+library(readr)
+
+setwd("~/Mithrandir.training/R.data")
+
+DE_KID_S1_vs_BLO_S1 <- read_delim("InputData/8.DEanalysis.data/DEresults/genes.counts.matrix.KID_S1_vs_BLO_S1.edgeR.DE_results", 
+    delim = "\t", 
+    escape_double = FALSE, 
+    trim_ws = TRUE)
+
+DE_KID_S1_vs_KID_S4 <- read_delim("InputData/8.DEanalysis.data/DEresults/genes.counts.matrix.KID_S1_vs_KID_S4.edgeR.DE_results", 
+    delim = "\t", 
+    escape_double = FALSE, 
+    trim_ws = TRUE)
+
+DE_KID_S2_vs_BLO_S2 <- read_delim("InputData/8.DEanalysis.data/DEresults/genes.counts.matrix.KID_S2_vs_BLO_S2.edgeR.DE_results", 
+    delim = "\t", 
+    escape_double = FALSE, 
+    trim_ws = TRUE)
+
+DE_KID_S3_vs_BLO_S3 <- read_delim("InputData/8.DEanalysis.data/DEresults/genes.counts.matrix.KID_S3_vs_BLO_S3.edgeR.DE_results", 
+    delim = "\t", 
+    escape_double = FALSE, 
+    trim_ws = TRUE)
+
+DE_KID_S4_vs_BLO_S4 <- read_delim("InputData/8.DEanalysis.data/DEresults/genes.counts.matrix.KID_S4_vs_BLO_S4.edgeR.DE_results", 
+    delim = "\t", 
+    escape_double = FALSE, 
+    trim_ws = TRUE)
+
+   
+```
+#2. DEdata process and summarise
+```{r}
+
+#select选择列, filter过滤行, mutate生成新列, if_else逻辑判断
+library(tidyverse)
+DE_KID_S1_vs_BLO_S1_Result <- select(DE_KID_S1_vs_BLO_S1, id, logFC, PValue, FDR) %>%
+  # filter(abs(logFC) > 0.2 & FDR < 0.05) %>% 
+  mutate(FC = 10 ** logFC, 
+         direction = if_else(
+           PValue > 0.05, 'ns', if_else(
+             abs(logFC) < 0.5, 'ns', if_else(
+               logFC >= 0.5, 'up', 'down')
+             )
+           )
+         ) %>%
+  
+  #关联基因信息
+  left_join(gene_info, 
+            by = c('id'=  'Gene_Id')) %>%
+  
+  #关联表达量信息
+  left_join(rownames_to_column(gene_exp, var = 'id'),
+            by = 'id') %>%
+  
+  #排序
+  arrange(desc(abs(logFC))) 
+  
+  #统计差异表达数据
+  group_by(DE_KID_S1_vs_BLO_S1_Result, direction) %>%
+  summarise(count = n())
+
+```
+
+#3. Plot DE Volcano
+```{r, fig.height=8, fig.width=8, dpi=800}
+library(EnhancedVolcano)
+EnhancedVolcano(DE_KID_S1_vs_BLO_S1_Result,
+                lab = DE_KID_S1_vs_BLO_S1_Result$id,
+                x = 'logFC',
+                y = 'PValue',
+                title = 'Volcano Plot',
+                subtitle = 'KID_S1_vs_BLO_S1',
+                xlim = c(-10, 10),
+                pCutoff = 0.05,
+                FCcutoff = 1)
+```
+
+#4. Save data
+```{r}
+#save data
+save(DE_KID_S1_vs_BLO_S1, 
+     DE_KID_S1_vs_KID_S4, 
+     DE_KID_S2_vs_BLO_S2, 
+     DE_KID_S3_vs_BLO_S3, 
+     DE_KID_S4_vs_BLO_S4,
+     DE_KID_S1_vs_BLO_S1_Result,
+     gene_count,
+     gene_exp,
+     gene_info,
+     sample_info,
+     file = '~/Mithrandir.training/R.data/OutputData/Input_DE_Data.rdata')
+```
+
+
+#5. Plot DE Heatmap
+
+```{r, fig.height=6, fig.width=8, dpi=1800}
+## -----------------------------------------------------------
+##选取前20个差异基因
+top_de_exp <- dplyr::slice(DE_KID_S1_vs_BLO_S1_Result, 1:20) %>%
+  select(-c(2:12)) %>%
+  column_to_rownames(var = 'id')
+
+## -----------------------------------------------------------
+library(pheatmap)
+pheatmap(log10(top_de_exp + 1),
+         scale = 'row',
+         cluster_cols = F,
+         #根据样品名称进行注释
+         annotation_col = select(sample_info, stage, strain),
+         cutree_rows = 5, 
+         cutree_cols = 4,
+         #调整注释颜色
+         annotation_colors = list(
+           stage = c(S1 = 'white', 
+                     S2 = 'light grey',
+                     S3 = 'dark grey', 
+                     S4 = 'black'),
+           strain = c(BLO = 'white',
+                      KID = 'black')),
+         #调整连续调色板
+         color = colorRampPalette(c("white", "white", "red"))(200),
+         angle_col = 45
+         )
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.

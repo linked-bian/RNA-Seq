@@ -1,0 +1,105 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  html_notebook:
+    fig_height: 6
+---
+#1. Input Data
+
+```{r Input Data}
+#1. Input Data: 
+load(file = '~/Mithrandir.training/R.data/OutputData/Inputdata.rdata')
+```
+
+#2. PCA analysis
+
+```{r PCA analysis}
+library(PCAtools)
+p <- pca(gene_exp, metadata = sample_info, removeVar = 0.1)
+```
+##View Gene and weights in PCA
+
+```{r View Gene and weights in PCA}
+##View Gene weights in PCA
+pca_loadings <- p$loadings
+##View Sample weight in PCA
+pca_rotated <- p$rotated
+```
+
+##Plot PCA Explain Variation
+
+```{r,fig.height=8, fig.width=8, dpi=800}
+##Plot PCA Explain Variation
+screeplot(p)
+```
+
+##Plot PCA rotated
+
+```{r biplot, fig.height=8, fig.width=8, dpi=800}
+##Plot PCA rotated
+p1 <- biplot(p, 
+       x = 'PC1',
+       y = 'PC2',
+       colby = 'strain',
+       colkey = c('KID' = 'red', 'BLO' = 'yellow'),
+       shape = 'stage',
+       legendPosition = 'top',
+       showLoadings = TRUE,
+       lab = NULL)
+```
+
+##Plot gene weight in PCA
+
+```{r, fig.height=8, fig.width=8, dpi=800}
+#Plot gene in PCA
+p2 <- plotloadings(p)
+```
+#3. Batch effect
+```{r, fig.height=5, fig.width=8, dpi=800}
+#3. Batch effect
+p3 <- boxplot(log10(gene_exp))
+##library(sva)：remove batch effect if needed, exp: samples from different Cor.
+```
+
+#4. Save Data
+```{r}
+
+save(gene_count, 
+     gene_exp, 
+     sample_info, 
+     gene_info, 
+     file ='~/Mithrandir.training/R.data/OutputData/Inputdata.rdata')
+save(p,
+     pca_loadings,
+     pca_rotated,
+     sample_hc,
+     file='~/Mithrandir.training/R.data/OutputData/Clustering.rdata')
+
+```
+
+#5. Merge Figure
+
+```{r fig.height=8, fig.width=20, dpi=800}
+
+#R语言进行图片布局
+#library(patchwork)
+library(cowplot)
+plot_grid(p1, p2, labels = c('A', 'B'))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
